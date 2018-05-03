@@ -44,8 +44,6 @@
 
 
 int main(void) {
-
-    //Test push
     
     //Setup oscillator output for transmission
     TRISBbits.TRISB15 = 0;
@@ -58,45 +56,92 @@ int main(void) {
     TRISBbits.TRISB14 = 0;
     TRISBbits.TRISB13 = 0;
     TRISBbits.TRISB7 = 1;
+    TRISBbits.TRISB8 = 0;
     
     TRISBbits.TRISB1 = 0;
     _INT0IE = 0;
     
     while(1){
     
-        DSCONbits.RELEASE = 0;   
+//        DSCONbits.RELEASE = 0;   
+//        
+//        //Start charging transmit cap
+//        TRISBbits.TRISB1 = 0;
+//        LATBbits.LATB1 = 1;
+//        
+//        //Disconnect data coil
+//        LATBbits.LATB8 = 0;
+//        
+//        
+//        //Check for power
+//        while(1){
+//            LATBbits.LATB14 = 1;    //Close S1
+//            //wait for a little to charge
+//            asm("NOP");
+//            asm("NOP");
+//            asm("NOP");
+//            asm("NOP");
+//            asm("NOP");
+//            
+//            if(PORTBbits.RB7 == 1){ //If cap was charged
+//               LATBbits.LATB14 = 0; //Open S1
+//               LATBbits.LATB13 = 1; //Close S2 to drain cap
+//               LATBbits.LATB13 = 0; //Open S2
+//            } else {                //There was no power detected
+//                //LATBbits.LATB1 = 0;
+//                TRISBbits.TRISB1 = 1;
+//                LATBbits.LATB8 = 1; //Connect transmit antenna
+//                
+//                break;              //Ready to transmit
+//            }
+//        }
+//        
+//        LATBbits.LATB14 = 0; //Open S1
+//        LATBbits.LATB13 = 1; //Close S2 to drain cap
+//        
+//        
+//        //Transmit Data
+//        
+//        ONE();
+//        hexF();
+//        hex0();
+//        hexF();
+//        hex0();
+//        hexF();
+//        hex0();
+//        hexF();
+//        hex0();
+//
+//        
+//        //Save data in DSGPR0, DSGPR1
+//        
+//        LATBbits.LATB14 = 1; //Close S1
+//        LATBbits.LATB13 = 0; //Open S2
+//        
+//        
+//        //Setup INT0
+//        _INT0EP = 0;    //Trigger on rising edge
+//        _INT0IF = 0;    //Reset interrupt flag
+//        _INT0IE = 1;    //Enable interrupt 
+//        
+//        //Go to deep sleep
+//        DSCONbits.DSEN = 1;
+//        asm("NOP");
+//        asm("NOP");
+//        asm("NOP");
+//        asm("PWRSAV #0");
+//        
+//        DSCONbits.RELEASE = 0;
+//        RCONbits.DPSLP = 0;
+//        _INT0IE = 0;
         
-        //Start charging transmit cap
+        
         TRISBbits.TRISB1 = 0;
         LATBbits.LATB1 = 1;
+        __delay_ms(1000);
+        TRISBbits.TRISB1 = 1;
         
-        
-        //Check for power
-        while(1){
-            LATBbits.LATB14 = 1;    //Close S1
-            //wait for a little to charge
-            asm("NOP");
-            asm("NOP");
-            asm("NOP");
-            asm("NOP");
-            asm("NOP");
-            
-            if(PORTBbits.RB7 == 1){ //If cap was charged
-               LATBbits.LATB14 = 0; //Open S1
-               LATBbits.LATB13 = 1; //Close S2 to drain cap
-               LATBbits.LATB13 = 0; //Open S2
-            } else {                //There was no power detected
-                LATBbits.LATB1 = 0;
-                TRISBbits.TRISB1 = 1;
-                break;              //Ready to transmit
-            }
-        }
-        
-        LATBbits.LATB14 = 0; //Open S1
-        LATBbits.LATB13 = 1; //Close S2 to drain cap
-        
-        //Transmit Data
-        
+                
         ONE();
         hexF();
         hex0();
@@ -106,32 +151,9 @@ int main(void) {
         hex0();
         hexF();
         hex0();
-        hexF();
-        hex0();
-        hexF();
-        hex0();
-        
-        //Save data in DSGPR0, DSGPR1
-        
-        LATBbits.LATB14 = 1; //Close S1
-        LATBbits.LATB13 = 0; //Open S2
+        __delay_ms(3000)
         
         
-        //Setup INT0
-        _INT0EP = 0;    //Trigger on rising edge
-        _INT0IF = 0;    //Reset interrupt flag
-        _INT0IE = 1;    //Enable interrupt 
-        
-        //Go to deep sleep
-        DSCONbits.DSEN = 1;
-        asm("NOP");
-        asm("NOP");
-        asm("NOP");
-        asm("PWRSAV #0");
-        
-        DSCONbits.RELEASE = 0;
-        RCONbits.DPSLP = 0;
-        _INT0IE = 0;
         
         //asm("goto start");    
     }
