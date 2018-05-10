@@ -24,7 +24,7 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=TagCode.X
+PROJECTNAME=Thesis-TagCode
 
 # Active Configuration
 DEFAULTCONF=default

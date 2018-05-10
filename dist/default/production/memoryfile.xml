@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <project>
-  <executable name="dist/default/production/TagCodeV2.X.production.elf">
+  <executable name="dist/default/production/Thesis-TagCode.production.elf">
     <memory name="data">
       <units>bytes</units>
       <length>1536</length>
@@ -11,8 +11,8 @@
     <memory name="program">
       <units>bytes</units>
       <length>16128</length>
-      <used>1701</used>
-      <free>14427</free>
+      <used>1647</used>
+      <free>14481</free>
     </memory>
   </executable>
 </project>

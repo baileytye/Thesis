@@ -18,7 +18,7 @@
 #pragma config FNOSC = LPRC  // Start up CLK = 32 kHz
 #pragma config FCKSM = CSECMD // Clock switching is enabled, clock monitor disabled
 #pragma config SOSCSEL = SOSCLP // Secondary oscillator for Low Power Operation
-#pragma config POSCFREQ = MS  //Primary Oscillator/External clk freq betwn 100kHz and 8 MHz. Options: LS, MS, HS
+#pragma config POSCFREQ = LS  //Primary Oscillator/External clk freq betwn 100kHz and 8 MHz. Options: LS, MS, HS
 #pragma config OSCIOFNC = ON  //CLKO output disabled on pin 8, use as IO. 
 #pragma config POSCMOD = NONE  // Primary oscillator mode is disabled
 

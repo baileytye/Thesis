@@ -20,9 +20,17 @@
 #include "macros.h"
 
 
-#define S1Pin RB14
-#define S2Pin RB13
-#define PowerCheckPin RA6
+
+/*-----------------------User Definitions------------------------------*/
+
+
+/* Pin Mapping
+ * 
+ * 
+ * 
+ * 
+ */
+
 
 #define FCY 31400UL       // instruction cycle Hrtz
 
@@ -103,6 +111,7 @@ int main(void) {
         
         //Transmit Data
         
+       //Not sure what this is, check to see if deletion is possible
         TRISBbits.TRISB15 = 0;
         ONE();
         hex4();
