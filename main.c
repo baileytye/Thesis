@@ -26,11 +26,51 @@
 
 /* Pin Mapping
  * 
- * 
- * 
+ * B15 - OSCILLATOR_OUTPUT - Output of internal oscillator, used to control the 
+ *       data transmission.  
+ * B14 - 
+ * B13 - 
+ * B8 - 
+ * B7 - 
+ * B1 -  
  * 
  */
 
+
+#define INPUT 1
+#define HIGH_IMPEDANCE 1
+#define OUTPUT 0
+
+#define CLOSED 1
+#define OPEN 0
+
+#define ON 1
+#define OFF 0
+
+
+
+#define OSCILLATOR_OUTPUT_DIR TRISBbits.TRISB15
+#define OSCILLATOR_OUTPUT_EN REFOCONbits.ROEN
+
+#define SWITCH_ONE_DIR TRISBbits.TRISB14
+#define SWITCH_ONE_SET LATBbits.LATB14
+
+#define SWITCH_TWO_DIR TRISBbits.TRISB13
+#define SWITCH_TWO_SET LATBbits.LATB13
+
+#define POWER_DETECTION_DIR TRISBbits.TRISB7
+#define POWER_DETECTION_READ PORTBbits.RB7
+
+#define TRANSMIT_EN_DIR TRISBbits.TRISB8
+#define TRANSMIT_EN_SET LATBbits.LATB8 
+
+#define TRANSMIT_CAP_DIR TRISBbits.TRISB1
+#define TRANSMIT_CAP_SET LATBbits.LATB1
+
+
+
+
+//-----------------TIMER DEFINITIONS---------------//
 
 #define FCY 31400UL       // instruction cycle Hrtz
 
@@ -40,6 +80,8 @@
 #define __delay_us(d) \
   { __delay32( (unsigned long) (((unsigned long long) d)*(FCY)/1000000ULL)); }
 
+
+//--------------- USER MACROS------------------//
 #define ONE(void) ({\
         REFOCONbits.ROEN = 1;\
         asm("nop");\
@@ -54,36 +96,37 @@
 int main(void) {
     
     //Setup oscillator output for transmission
-    TRISBbits.TRISB15 = 0;
+    OSCILLATOR_OUTPUT_DIR = OUTPUT;
     REFOCONbits.ROSSLP = 0;
     REFOCONbits.ROSEL = 0;
     REFOCONbits.RODIV = 0b0001;
-    REFOCONbits.ROEN = 0;
+    OSCILLATOR_OUTPUT_EN = OFF;
 
-    //Setup switch controls
-    TRISBbits.TRISB14 = 0;
-    TRISBbits.TRISB13 = 0;
-    TRISBbits.TRISB7 = 1;
-    TRISBbits.TRISB8 = 0;
-    
-    TRISBbits.TRISB1 = 0;
-    _INT0IE = 0;
+    //Setup direction of pinouts
+    SWITCH_ONE_DIR = OUTPUT;
+    SWITCH_TWO_DIR = OUTPUT;
+    TRANSMIT_EN_DIR = OUTPUT;
+    POWER_DETECTION_DIR = INPUT;
+    TRANSMIT_CAP_DIR = OUTPUT;
+
+    _INT0IE = OFF;
     
     while(1){
     
         DSCONbits.RELEASE = 0;   
         
         //Start charging transmit cap
-        TRISBbits.TRISB1 = 0;
-        LATBbits.LATB1 = 1;
+        TRANSMIT_CAP_DIR = OUTPUT;
+        TRANSMIT_CAP_SET = ON;
         
         //Disconnect data coil
-        LATBbits.LATB8 = 0;
+        TRANSMIT_EN_SET = OFF;
         
         
         //Check for power
         while(1){
-            LATBbits.LATB14 = 1;    //Close S1
+            SWITCH_ONE_SET = CLOSED;    //Close S1
+            
             //wait for a little to charge
             asm("NOP");
             asm("NOP");
@@ -91,21 +134,22 @@ int main(void) {
             asm("NOP");
             asm("NOP");
             
-            if(PORTBbits.RB7 == 1){ //If cap was charged
-               LATBbits.LATB14 = 0; //Open S1
-               LATBbits.LATB13 = 1; //Close S2 to drain cap
-               LATBbits.LATB13 = 0; //Open S2
+            if(POWER_DETECTION_READ == ON){ //If cap was charged
+               SWITCH_ONE_SET = OPEN; //Open S1
+               SWITCH_TWO_SET = CLOSED; //Close S2 to drain cap
+               asm("NOP");
+               asm("NOP");
+               SWITCH_TWO_SET = OPEN; //Open S2
             } else {                //There was no power detected
-                //LATBbits.LATB1 = 0;
-                TRISBbits.TRISB1 = 1;
-                LATBbits.LATB8 = 1; //Connect transmit antenna
                 
+                TRANSMIT_CAP_DIR = HIGH_IMPEDANCE;
+                TRANSMIT_EN_SET = ON; //Connect transmit antenna    
                 break;              //Ready to transmit
             }
         }
         
-        LATBbits.LATB14 = 0; //Open S1
-        LATBbits.LATB13 = 1; //Close S2 to drain cap
+        SWITCH_ONE_SET = OPEN; //Open S1
+        SWITCH_TWO_SET = CLOSED; //Close S2 to drain cap
         
        __delay_ms(300);
         
@@ -125,18 +169,18 @@ int main(void) {
         hex6();
         hexF();
 
-        LATBbits.LATB8 = 0;
+        TRANSMIT_EN_SET = OFF;
         
         //Save data in DSGPR0, DSGPR1
         
-        LATBbits.LATB14 = 1; //Close S1
-        LATBbits.LATB13 = 0; //Open S2
+        SWITCH_ONE_SET = CLOSED; //Close S1
+        SWITCH_TWO_SET = OPEN; //Open S2
         
         
         //Setup INT0
         _INT0EP = 0;    //Trigger on rising edge
         _INT0IF = 0;    //Reset interrupt flag
-        _INT0IE = 1;    //Enable interrupt 
+        _INT0IE = ON;    //Enable interrupt 
         
         //Go to deep sleep
         DSCONbits.DSEN = 1;
@@ -147,7 +191,7 @@ int main(void) {
         
         DSCONbits.RELEASE = 0;
         RCONbits.DPSLP = 0;
-        _INT0IE = 0;
+        _INT0IE = OFF;
         
         
 //        TRISBbits.TRISB1 = 0;
