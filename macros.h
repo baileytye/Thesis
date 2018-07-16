@@ -32,12 +32,19 @@ extern "C" {
            })
 
 #define ONE(void) ({\
-        REFOCONbits.ROEN = 1;\
+        asm("BSET 0x74F, #7");\
         asm("nop");\
         asm("nop");\
         asm("nop");\
-        REFOCONbits.ROEN = 0;\
+        asm("BCLR 0x74F, #7");\
            })
+
+
+/***********FUNCTION PROTOTYPES************/    
+void transmitData(void);
+
+
+
 
 static inline void hexF(){
         __delay_us(100); 

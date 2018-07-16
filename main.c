@@ -18,10 +18,13 @@
 /* ---------------------- User-Defined Library Headers ---------------------- */
 #include "Configuration.h"
 #include "macros.h"
-
+#include "adc.h"
 
 
 /*-----------------------User Definitions------------------------------*/
+
+
+#define BERTEST 0
 
 
 /* PIN MAPPING
@@ -31,7 +34,7 @@
  * B13 - SWITCH_TWO - Second switch in the power detection circuit
  * B8 - TRANSMIT_EN - Switch to enable transmission on data to reader
  * B7 - POWER_DETECTION - Voltage reading from cap to determine if power was detected
- * B1 - TRANSMIT_CAP - Cap used as power source for data transmission
+ * B1 - REMOVED - TRANSMIT_CAP - Cap used as power source for data transmission - REMOVED
  */
 
 
@@ -62,6 +65,10 @@
 #define TRANSMIT_EN_DIR TRISBbits.TRISB8
 #define TRANSMIT_EN_SET LATBbits.LATB8 
 
+#define ADC_INPUT_DIR TRISBbits.TRISB0
+
+
+//Removed
 #define TRANSMIT_CAP_DIR TRISBbits.TRISB1
 #define TRANSMIT_CAP_SET LATBbits.LATB1
 
@@ -92,6 +99,13 @@
 
 
 int main(void) {
+    
+    DSCONbits.RELEASE = 0; 
+    if(!RCONbits.DPSLP){
+        DSGPR0 = 0;
+    }
+    RCONbits.DPSLP = 0;
+    _INT0IE = OFF;
 
     //Setup oscillator output for transmission
     OSCILLATOR_OUTPUT_DIR = OUTPUT;
@@ -99,34 +113,66 @@ int main(void) {
     REFOCONbits.ROSEL = 0;
     REFOCONbits.RODIV = 0b0001;
     OSCILLATOR_OUTPUT_EN = OFF;
+    
+    #ifdef BERTEST
+    int state;
+    #else
+    ADC_INPUT_DIR = INPUT;
+    #endif
+
 
     //Setup direction of pinouts
     SWITCH_ONE_DIR = OUTPUT;
+    SWITCH_ONE_SET = CLOSED;
     SWITCH_TWO_DIR = OUTPUT;
     TRANSMIT_EN_DIR = OUTPUT;
     POWER_DETECTION_DIR = INPUT;
-    TRANSMIT_CAP_DIR = OUTPUT;
+    //TRANSMIT_CAP_DIR = OUTPUT;
 
-    _INT0IE = OFF;
     
+
+    
+    //__delay_ms(100);
+    
+//    /****************TEST TIMING CODE*****************/
+//    
+//        //Start charging transmit cap
+//        TRANSMIT_CAP_DIR = OUTPUT;
+//        TRANSMIT_CAP_SET = ON;
+//        __delay_ms(100);
+//        
+//        TRANSMIT_CAP_DIR = HIGH_IMPEDANCE;
+//
+//        DSGPR0 = 0xF0F0;
+//        DSGPR1 = 0x5555;
+//        transmitData();
+//        __delay_ms(1000);
+//        
+//        
+//    /****************END OF TEST TIMING****************/
+
     while(1){
-    
-        DSCONbits.RELEASE = 0;   
-        
-        //Start charging transmit cap
-        TRANSMIT_CAP_DIR = OUTPUT;
-        TRANSMIT_CAP_SET = ON;
-        
+          
         //Disconnect data coil
         TRANSMIT_EN_SET = OFF;
         
-        //Get state from previous sleep
-        int state = ++DSGPR0;
-        if(state >= 7){
-            state = 0;
-        }
+        //REMOVED - Start charging transmit cap
+        //TRANSMIT_CAP_DIR = OUTPUT;
+        //TRANSMIT_CAP_SET = ON;
         
-        //Check for power, and wait till power turns off
+        #ifdef BERTEST 
+            //Get state from previous sleep
+            state = ++DSGPR0;
+            if(state >= 7){
+                state = 1;
+            }
+        #else
+            adcInit();  
+            DSGPR0 = getADC();
+            AD1CON1bits.ADON = 0;
+        #endif
+        
+        //----Check for power, and wait till power turns off----//
         while(1){
             SWITCH_ONE_SET = CLOSED;    //Close S1
             
@@ -145,90 +191,76 @@ int main(void) {
                SWITCH_TWO_SET = OPEN;           //Open S2
             } else {                            //There was no power detected
                 
-                TRANSMIT_CAP_DIR = HIGH_IMPEDANCE;
+                //TRANSMIT_CAP_DIR = HIGH_IMPEDANCE;
                 TRANSMIT_EN_SET = ON;           //Connect transmit antenna    
                 break;                          //Ready to transmit
             }
         }
+        //--------------------------------------------------------//
         
         SWITCH_ONE_SET = OPEN; //Open S1
         SWITCH_TWO_SET = CLOSED; //Close S2 to drain cap
         
         //Wait for a second for the amp on reader to settle
-        __delay_ms(8);
+        __delay_ms(15);
         
-        //Not sure what this is, check to see if deletion is possible
-        TRISBbits.TRISB15 = 0;
-//        
-//        /***************BER TEST CODE***************/        
-//
-//        //Transmit Data with odd parity
-//        switch(state){
-//            case 1:
-//                //Transmit all zeroes 0x0000 0000 8
-//                DSGPR0 = 0x0000;
-//                DSGPR1 = 0x0000;
-//                transmitData();
-//                break;
-//            case 2:
-//                //Transmit all ones 0xFFFF FFFF 8
-//                DSGPR0 = 0xFFFF;
-//                DSGPR1 = 0xFFFF;   
-//                transmitData();
-//                break;
-//            case 3:
-//                //Transmit alternating 0x5555 5555 8
-//                DSGPR0 = 0x5555;
-//                DSGPR1 = 0x5555;
-//                transmitData();
-//                break;
-//            case 4:
-//                //Transmit group alternating 0xF0F0 F0F0 8
-//                DSGPR0 = 0xF0F0;
-//                DSGPR1 = 0xF0F0;
-//                transmitData();
-//                break;
-//            case 5:
-//                //Transmit first random word (open) 0x6F70 656E 8
-//                DSGPR0 = 0x6F70;
-//                DSGPR1 = 0x656E;
-//                transmitData();
-//                break;
-//            case 6:
-//                //Transmit second random data (!@#%) 0x2140 2325 0
-//                DSGPR0 = 0x2140;
-//                DSGPR1 = 0x2325;
-//                transmitData();
-//                break;
-//            default:
-//                //Transmit fail 0x4661 696C 8
-//                DSGPR0 = 0x4661;
-//                DSGPR1 = 0x696C;
-//                transmitData();
-//                break;
-//        }       
-//        DSGPR0 = state;
-//      /*********** END OF BER TEST CODE ************/
-        
-        
-        /*************** OLD TESTING******************/
-        /**************Remove when done***************/
-        DSGPR0 = 0x4865;
-        DSGPR1 = 0x6C6C;
-        transmitData();
 
-        ONE();
-        hex4();
-        hex8();
-        hex6();
-        hex5();
-        hex6();
-        hexC();
-        hex6();
-        hexC();
-        hex6();
-        hexF();
-        /**********************************************/
+        /***************BER TEST CODE***************/        
+        #ifdef BERTEST
+
+        //Transmit Data with odd parity
+        switch(state){
+            case 1:
+                //Transmit all zeroes 0x0000 0000 8
+                DSGPR0 = 0x0000;
+                DSGPR1 = 0x0000;
+                transmitData();
+                break;
+            case 2:
+                //Transmit all ones 0xFFFF FFFF 8
+                DSGPR0 = 0xFFFF;
+                DSGPR1 = 0xFFFF;   
+                transmitData();
+                break;
+            case 3:
+                //Transmit alternating 0x5555 5555 8
+                DSGPR0 = 0x5555;
+                DSGPR1 = 0x5555;
+                transmitData();
+                break;
+            case 4:
+                //Transmit group alternating 0xF0F0 F0F0 8
+                DSGPR0 = 0xF0F0;
+                DSGPR1 = 0xF0F0;
+                transmitData();
+                break;
+            case 5:
+                //Transmit first random word (open) 0x6F70 656E 8
+                DSGPR0 = 0x6F70;
+                DSGPR1 = 0x656E;
+                transmitData();
+                break;
+            case 6:
+                //Transmit second random data (!@#%) 0x2140 2325 0
+                DSGPR0 = 0x2140;
+                DSGPR1 = 0x2325;
+                transmitData();
+                break;
+            default:
+                //Transmit fail 0x4661 696C 8
+                DSGPR0 = 0x4661;
+                DSGPR1 = 0x696C;
+                transmitData();
+                break;
+        }       
+        DSGPR0 = state;
+        /*********** END OF BER TEST CODE ************/
+        #else
+
+        DSGPR1 = 0x1111;
+        transmitData();
+        
+        #endif
 
         TRANSMIT_EN_SET = OFF;
         
@@ -251,10 +283,9 @@ int main(void) {
         asm("PWRSAV #0");
         
         DSCONbits.RELEASE = 0;
-        RCONbits.DPSLP = 0;
-        _INT0IE = OFF;
+
         
-          
+        
     }
     
     
@@ -275,8 +306,8 @@ void transmitData(){
     for(i = 0; i < 16; i++){
         if( DSGPR1 & (b << i) ){count++;}
     } 
-    if(!(count % 2)){
-        asm("MOV #1, W0");
+    if((count % 2) == 0){
+        asm("MOV #1, W7");
     }
     
     //Send start bit
@@ -285,104 +316,121 @@ void transmitData(){
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
+    __delay_us(100);
     
     //Send Data
-        asm("BTSC DSGPR0, #15");
+    asm("BTSC DSGPR0, #15");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #14");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #14");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #13");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #13");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #12");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #12");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #11");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #11");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #10");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #10");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #9");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #9");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #8");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #8");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #7");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #7");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #6");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #6");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #5");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #5");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #4");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #4");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #3");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #3");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #2");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #2");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #1");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #1");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR0, #0");
+    __delay_us(100);
+    asm("BTSC DSGPR0, #0");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
+    __delay_us(100);
     
     
     
@@ -393,100 +441,116 @@ void transmitData(){
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #14");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #14");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #13");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #13");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #12");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #12");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #11");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #11");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #10");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #10");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #9");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #9");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #8");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #8");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #7");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #7");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #6");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #6");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #5");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #5");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #4");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #4");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #3");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #3");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #2");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #2");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #1");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #1");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
-        asm("BTSC DSGPR1, #0");
+    __delay_us(100);
+    asm("BTSC DSGPR1, #0");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
     asm("NOP");
     asm("BCLR 0x74F, #7");
+    __delay_us(100);
     
     
     //Send parity
-    asm("BTSC W0, #0");
+    asm("BTSC W7 , #0");
     asm("BSET 0x74F, #7");
     asm("NOP");
     asm("NOP");
