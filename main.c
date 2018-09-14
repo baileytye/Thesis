@@ -24,7 +24,8 @@
 /*-----------------------User Definitions------------------------------*/
 
 
-#define BERTEST 0
+//#define BERTEST 0
+//#define FULLSYSTEM 0
 
 
 /* PIN MAPPING
@@ -99,6 +100,9 @@
 
 
 int main(void) {
+    
+    
+  #ifdef FULLSYSTEM
     
     DSCONbits.RELEASE = 0; 
     if(!RCONbits.DPSLP){
@@ -287,6 +291,22 @@ int main(void) {
         
         
     }
+    
+#else
+    
+    //Setup oscillator output for transmission
+    OSCILLATOR_OUTPUT_DIR = OUTPUT;
+    REFOCONbits.ROSSLP = 0;
+    REFOCONbits.ROSEL = 0;
+    
+    //0 for 32 kHz, 1 - 16 kHz, 2 - 8kHz ...
+    REFOCONbits.RODIV = 0b0011;
+    OSCILLATOR_OUTPUT_EN = ON;
+    
+    while(1);
+    
+#endif
+    
     
     
     return 0;
