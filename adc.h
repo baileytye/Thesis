@@ -1,8 +1,8 @@
 /* 
- * File:   
- * Author: 
- * Comments:
- * Revision history: 
+ * File:    ADC.h 
+ * Author:  Bailey Tye
+ * Created on: March 28, 2018, 12:05 PM
+ * Last Edited: May 17, 2018
  */
 
 // This is a guard condition so that contents of this file are not included
