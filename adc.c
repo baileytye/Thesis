@@ -1,5 +1,10 @@
 
-
+/*
+ * File:    adc.c
+ * Author:  Bailey Tye
+ * Created on March 28, 2018, 12:04 PM
+ * Last Edited: May 17, 2018
+ */
 
 #include "adc.h"
 
